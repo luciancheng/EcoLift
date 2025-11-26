@@ -1,11 +1,18 @@
 import cv2
 import numpy as np
+import socket
+import json
+import time
 
 lower_hsv = np.array([0, 120, 70])
 upper_hsv = np.array([10, 255, 255])
 
 current_frame = None 
 origin_center = None
+
+# open web socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+TARGET = ("127.0.0.1", 5005)
 
 def on_click(event, x, y, flags, param):
     """
@@ -86,12 +93,21 @@ def main():
 
                 # Absolute displacement from origin
                 dx = cx - origin_center[0]
-                dy = cy - origin_center[1]
+                dy = cy - origin_center[1] 
 
         # display object displacement
         text = f"dx: {dx}, dy: {dy}"
         cv2.putText(frame, text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX,
                     1.0, (0, 255, 0), 2)
+        
+        # send data over web socket 
+        # want down to be negative
+        data = {
+            "dx": dx,
+            "dy": -dy,
+            "timestamp": time.time()
+        }
+        sock.sendto(json.dumps(data).encode(), TARGET)
 
         cv2.imshow("Tracking", frame)
 
