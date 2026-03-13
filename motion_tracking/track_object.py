@@ -61,7 +61,7 @@ def create_camera(device):
         return read, release
 
     else:  # laptop webcam
-        cap = cv2.VideoCapture(1)
+        cap = cv2.VideoCapture(-1)
 
         def read():
             return cap.read()
