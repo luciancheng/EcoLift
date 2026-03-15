@@ -1,1 +1,10 @@
 venv/
+__pycache__/
+*.pyc
+
+node_modules/
+dashboard/dist/
+dashboard/.env
+
+.env
+*.log
