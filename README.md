@@ -15,7 +15,7 @@
 │  main.py            │ WebRTC   │   React + Vite       │
 │  ├─ Vision (thread) │ ──────▶  │   ├─ Live video      │
 │  ├─ Failure Detect  │          │   ├─ Telemetry       │
-│  └─ Socket.IO srv   │ ◀─────▶ │   ├─ Charts          │
+│  └─ Socket.IO srv   │ ◀─────▶  │   ├─ Charts          │
 │                     │ Socket.IO│   └─ HSV controls    │
 └────────┬────────────┘          └──────────────────────┘
          │ Tailscale VPN (100.x.x.x)
