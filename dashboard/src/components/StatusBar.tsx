@@ -4,18 +4,9 @@ interface Props {
   connected: boolean;
   streaming: boolean;
   failure: boolean;
-  hoistDirection: "U" | "D" | "N";
 }
 
-const HOIST_LABELS: Record<string, { text: string; cls: string }> = {
-  U: { text: "HOIST ▲ UP", cls: "bg-amber-500/15 text-amber-400" },
-  D: { text: "HOIST ▼ DOWN", cls: "bg-blue-500/15 text-blue-400" },
-  N: { text: "HOIST — IDLE", cls: "bg-zinc-700/50 text-zinc-400" },
-};
-
-export function StatusBar({ connected, streaming, failure, hoistDirection }: Props) {
-  const hoist = HOIST_LABELS[hoistDirection] ?? HOIST_LABELS.N;
-
+export function StatusBar({ connected, streaming, failure }: Props) {
   return (
     <header className="flex items-center justify-between px-5 py-2 bg-zinc-900 border-b border-zinc-800 shrink-0">
       <div className="flex items-center gap-2.5">
@@ -32,10 +23,6 @@ export function StatusBar({ connected, streaming, failure, hoistDirection }: Pro
             FAILURE
           </span>
         )}
-
-        <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold font-mono ${hoist.cls}`}>
-          {hoist.text}
-        </span>
 
         <span
           className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${

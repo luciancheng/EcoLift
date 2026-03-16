@@ -3,9 +3,6 @@ import {
   ArrowLeftRight,
   Gauge,
   LifeBuoy,
-  AlertTriangle,
-  Pause,
-  HandHelping,
 } from "lucide-react";
 import type { Telemetry } from "../types";
 
@@ -37,34 +34,6 @@ function Card({
           {value}
         </p>
       </div>
-    </div>
-  );
-}
-
-function StatusPill({
-  label,
-  active,
-  icon: Icon,
-}: {
-  label: string;
-  active: boolean;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium ${
-        active
-          ? "bg-red-500/10 border-red-500/30 text-red-400"
-          : "bg-zinc-800/50 border-zinc-700/50 text-zinc-500"
-      }`}
-    >
-      <Icon className="w-3.5 h-3.5" />
-      {label}
-      <span
-        className={`ml-auto w-1.5 h-1.5 rounded-full ${
-          active ? "bg-red-400 animate-pulse" : "bg-zinc-600"
-        }`}
-      />
     </div>
   );
 }
@@ -117,20 +86,6 @@ export function TelemetryPanel({ data }: Props) {
           value={`${(data.assistance * 100).toFixed(0)}%`}
           icon={LifeBuoy}
           color={data.assistance > 0 ? "text-amber-400" : "text-emerald-400"}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1 mt-0.5">
-        <StatusPill
-          label="Failure Detected"
-          active={data.failure}
-          icon={AlertTriangle}
-        />
-        <StatusPill label="Stalled" active={data.stalled} icon={Pause} />
-        <StatusPill
-          label="Assisting"
-          active={data.helping}
-          icon={HandHelping}
         />
       </div>
     </div>
