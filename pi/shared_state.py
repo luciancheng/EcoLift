@@ -93,6 +93,10 @@ class SharedState:
                 "upper_hsv": self.upper_hsv.tolist(),
             }
 
+    def get_hoist_direction(self) -> str:
+        with self._lock:
+            return self._hoist_direction
+
     # ── HSV range ──
 
     def set_hsv_range(self, lower, upper):
