@@ -4,9 +4,15 @@ import time
 import threading
 from shared_state import SharedState
 
+# Default red HSV ranges (red wraps around the hue wheel)
+DEFAULT_LOWER_1 = [0,   100,  60]
+DEFAULT_UPPER_1 = [10,  255, 255]
+DEFAULT_LOWER_2 = [160, 100,  60]
+DEFAULT_UPPER_2 = [179, 255, 255]
+
 
 class VisionTask:
-    """OpenCV HSV colour-tracking loop. Runs in its own thread."""
+    """OpenCV HSV red-circle tracking loop. Runs in its own thread."""
 
     def __init__(self, state: SharedState, device: str, target_fps: int = 30):
         self.state = state
@@ -17,12 +23,11 @@ class VisionTask:
     def stop(self):
         self._stop.set()
 
-    # ── Camera factory ──
+    # ── Camera factory ────────────────────────────────────────────────────────
 
     def _create_camera(self):
         if self.device == "pi":
             from picamera2 import Picamera2
-
             picam2 = Picamera2()
             picam2.configure(
                 picam2.create_video_configuration(
@@ -30,22 +35,52 @@ class VisionTask:
                 )
             )
             picam2.start()
-
-            def read():
-                frame = picam2.capture_array()
-                return True, frame
-
-            def release():
-                picam2.stop()
-
-            return read, release
+            return lambda: (True, picam2.capture_array()), picam2.stop
 
         cap = cv2.VideoCapture(0)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH,  1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT,  720)
         return cap.read, cap.release
 
-    # ── Main loop ──
+    # ── Mask builder ──────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _build_red_mask(hsv):
+        """Merge both red hue bands and clean up with ellipse morphology."""
+        m1 = cv2.inRange(hsv, np.array(DEFAULT_LOWER_1), np.array(DEFAULT_UPPER_1))
+        m2 = cv2.inRange(hsv, np.array(DEFAULT_LOWER_2), np.array(DEFAULT_UPPER_2))
+        mask = cv2.bitwise_or(m1, m2)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        mask = cv2.erode(mask,  kernel, iterations=2)
+        mask = cv2.dilate(mask, kernel, iterations=3)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+        return mask
+
+    # ── Contour helpers ───────────────────────────────────────────────────────
+
+    @staticmethod
+    def _circularity(contour):
+        area = cv2.contourArea(contour)
+        if area == 0:
+            return 0.0
+        perim = cv2.arcLength(contour, True)
+        return (4 * np.pi * area / (perim ** 2)) if perim else 0.0
+
+    @staticmethod
+    def _best_contour(contours, min_area=300, min_circularity=0.35):
+        """Return the largest, most circular blob. None if nothing qualifies."""
+        candidates = [
+            c for c in contours
+            if cv2.contourArea(c) >= min_area
+            and VisionTask._circularity(c) >= min_circularity
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda c: cv2.contourArea(c) * VisionTask._circularity(c))
+
+    # ── Main loop ─────────────────────────────────────────────────────────────
 
     def run(self):
         read_frame, release_camera = self._create_camera()
@@ -61,44 +96,28 @@ class VisionTask:
                     time.sleep(0.01)
                     continue
 
-                frame = cv2.flip(frame, 1)
                 raw_frame = frame.copy()
 
-                # ── Handle HSV-pick command from dashboard ──
-                pick = self.state.consume_hsv_pick()
-                if pick is not None:
-                    px, py = pick
-                    h_frame, w_frame = frame.shape[:2]
-                    if 0 <= px < w_frame and 0 <= py < h_frame:
-                        hsv_img = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-                        pixel = hsv_img[py, px]
-                        h, s, v = int(pixel[0]), int(pixel[1]), int(pixel[2])
-                        lower = [max(h - 10, 0), max(s - 60, 0), max(v - 60, 0)]
-                        upper = [min(h + 10, 179), min(s + 60, 255), min(v + 60, 255)]
-                        self.state.set_hsv_range(lower, upper)
-                        print(f"[Vision] HSV picked: lower={lower}, upper={upper}")
-                    origin_center = None
-
-                # ── Handle recalibrate command ──
+                # ── Recalibrate origin ────────────────────────────────────
                 if self.state.consume_recalibrate():
                     origin_center = None
                     print("[Vision] Origin recalibrated")
 
-                # ── HSV tracking ──
-                lower_hsv, upper_hsv = self.state.get_hsv_range()
+                # ── Build red mask and find best circle ───────────────────
                 hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-                mask = cv2.inRange(hsv, lower_hsv, upper_hsv)
-                mask = cv2.erode(mask, None, iterations=2)
-                mask = cv2.dilate(mask, None, iterations=2)
+                mask = self._build_red_mask(hsv)
 
                 contours, _ = cv2.findContours(
                     mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
                 )
+                c = self._best_contour(contours)
 
-                if contours:
-                    c = max(contours, key=cv2.contourArea)
+                if c is not None:
                     M = cv2.moments(c)
                     cv2.drawContours(frame, [c], -1, (0, 255, 0), 2)
+
+                    (ex, ey), er = cv2.minEnclosingCircle(c)
+                    cv2.circle(frame, (int(ex), int(ey)), int(er), (0, 200, 255), 1)
 
                     if M["m00"] > 0:
                         cx = int(M["m10"] / M["m00"])
@@ -111,21 +130,22 @@ class VisionTask:
                         dx = cx - origin_center[0]
                         dy = -(cy - origin_center[1])
 
+                # ── Debug overlay ─────────────────────────────────────────
                 if self.state.get_debug_overlay():
-                    text = f"dx: {dx}, dy: {dy}"
                     cv2.putText(
-                        frame, text, (20, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2,
+                        frame, f"dx: {dx}  dy: {dy}",
+                        (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2,
                     )
 
                 self.state.update_frame(raw_frame, frame)
                 self.state.update_tracking(dx, dy)
 
-                # Rate-limit to target FPS
+                # ── Rate-limit to target FPS ──────────────────────────────
                 elapsed = time.monotonic() - frame_start
                 sleep_time = (1.0 / self.target_fps) - elapsed
                 if sleep_time > 0:
                     time.sleep(sleep_time)
+
         finally:
             release_camera()
             print("[Vision] Camera released")
