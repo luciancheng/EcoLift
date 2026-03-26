@@ -1,78 +1,79 @@
 """
-EcoLift — single entry-point for the Raspberry Pi.
-
-Spawns concurrent tasks:
-  1. Vision       – OpenCV HSV tracking           (thread)
-  2. Detector     – failure / assistance algorithm (async)
-  3. Signaling    – Socket.IO + WebRTC server      (async)
-  4. Servo        – PWM hoist control              (thread, Pi only)
+EcoLift Pi — thin servo client that connects to the laptop server
+via Socket.IO and drives the servo based on hoist commands (U/D/N).
 
 Usage:
-  python main.py --device pi          # Raspberry Pi camera + servo
-  python main.py --device laptop      # laptop webcam (for development)
-  python main.py --port 9000          # custom signaling port
+  python main.py --host 100.x.x.x                  # Pi with real servo
+  python main.py --host 100.x.x.x --device laptop  # debug without hardware
+  python main.py --host localhost  --device laptop   # fully local debug
 """
 
 import asyncio
 import argparse
+import socketio
 
-from shared_state import SharedState
-from tracker import VisionTask
-from failure_detector import FailureDetector
-from signaling import SignalingServer
+from servo import ServoController
 
 
-async def main(device: str, port: int):
-    state = SharedState()
+async def main(host: str, port: int, device: str):
+    servo = ServoController(device)
 
-    vision = VisionTask(state, device)
-    detector = FailureDetector(state)
-    server = SignalingServer(state, port=port)
+    sio = socketio.AsyncClient(
+        reconnection=True,
+        reconnection_delay=1,
+        reconnection_delay_max=5,
+    )
 
-    tasks = [
-        asyncio.to_thread(vision.run),
-        detector.run(),
-        server.run(),
-    ]
+    @sio.event
+    async def connect():
+        print(f"[Pi] Connected to server at {host}:{port}")
 
-    servo = None
-    if device == "pi":
-        from servo import ServoController
+    @sio.event
+    async def disconnect():
+        print("[Pi] Disconnected from server — will reconnect")
 
-        servo = ServoController(state)
-        tasks.append(asyncio.to_thread(servo.run))
-        print("[Main] Servo controller enabled (Pi mode)")
+    @sio.on("hoist_command")
+    async def on_hoist_command(data):
+        servo.set_direction(data["direction"])
 
-    print(f"[Main] EcoLift starting  device={device}  port={port}")
-    print(f"[Main] Dashboard → connect to http://<this-ip>:{port}")
+    url = f"http://{host}:{port}"
+    print(f"[Pi] Connecting to {url} ...")
+
+    await sio.connect(url, transports=["websocket", "polling"])
 
     try:
-        await asyncio.gather(*tasks)
+        await asyncio.gather(
+            asyncio.to_thread(servo.run),
+            sio.wait(),
+        )
     finally:
-        vision.stop()
-        if servo:
-            servo.stop()
-        await server.cleanup()
-        print("[Main] Shutdown complete")
+        servo.stop()
+        await sio.disconnect()
+        print("[Pi] Shutdown complete")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="EcoLift Squat-Rack Spotter")
+    parser = argparse.ArgumentParser(description="EcoLift Pi Servo Client")
     parser.add_argument(
-        "--device",
-        choices=["laptop", "pi"],
-        default="laptop",
-        help="Camera source (default: laptop)",
+        "--host",
+        required=True,
+        help="Laptop server IP (Tailscale IP or localhost)",
     )
     parser.add_argument(
         "--port",
         type=int,
         default=8765,
-        help="Signaling-server port (default: 8765)",
+        help="Server port (default: 8765)",
+    )
+    parser.add_argument(
+        "--device",
+        choices=["laptop", "pi"],
+        default="pi",
+        help="'pi' for real servo, 'laptop' for mock/debug (default: pi)",
     )
     args = parser.parse_args()
 
     try:
-        asyncio.run(main(args.device, args.port))
+        asyncio.run(main(args.host, args.port, args.device))
     except KeyboardInterrupt:
-        print("\n[Main] Interrupted — exiting")
+        print("\n[Pi] Interrupted — exiting")

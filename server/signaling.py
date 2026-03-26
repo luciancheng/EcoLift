@@ -12,6 +12,7 @@ class SignalingServer:
     Socket.IO server (on aiohttp) that handles:
       - WebRTC offer/answer signaling for video streaming
       - Telemetry broadcasting at ~20 Hz
+      - hoist_command broadcasting for the Pi servo client
       - Dashboard commands (HSV pick, recalibrate, manual HSV set)
     """
 
@@ -90,12 +91,15 @@ class SignalingServer:
             state.set_debug_overlay(bool(data.get("enabled", False)))
             print(f"[Signaling] Debug overlay: {data.get('enabled')}")
 
-    # ── Telemetry broadcast loop ──
+    # ── Telemetry + hoist command broadcast loop ──
 
     async def _broadcast_telemetry(self):
         while True:
             telemetry = self.state.get_telemetry()
             await self.sio.emit("telemetry", telemetry)
+            await self.sio.emit(
+                "hoist_command", {"direction": telemetry["hoist_direction"]}
+            )
             await asyncio.sleep(0.05)
 
     # ── Lifecycle ──
@@ -107,7 +111,6 @@ class SignalingServer:
         await site.start()
         print(f"[Signaling] Server listening on http://{self.host}:{self.port}")
 
-        # Block forever on the telemetry broadcast loop
         await self._broadcast_telemetry()
 
     async def cleanup(self):

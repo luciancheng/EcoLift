@@ -9,23 +9,34 @@
 ## Architecture
 
 ```
-┌─────────────────────┐          ┌──────────────────────┐
-│   Raspberry Pi      │          │   Laptop Dashboard   │
-│                     │          │                      │
-│  main.py            │ WebRTC   │   React + Vite       │
-│  ├─ Vision (thread) │ ──────▶  │   ├─ Live video      │
-│  ├─ Failure Detect  │          │   ├─ Telemetry       │
-│  ├─ Socket.IO srv   │ ◀─────▶  │   ├─ Charts          │
-|  └─ Servo PWM       | Socket.IO|   └─ HSV controls    |
-│                     │          │                      │
-└────────┬────────────┘          └──────────────────────┘
-         │ Tailscale VPN (100.x.x.x)
+┌──────────────────────────────────────────────────────┐
+│                      Laptop                          │
+│                                                      │
+│  server/main.py              dashboard/ (React)      │
+│  ├─ Vision (OpenCV)          ├─ Live video (WebRTC)  │
+│  ├─ Failure Detector ──────▶ ├─ Telemetry            │
+│  └─ Signaling Server ◀────▶ ├─ Hoist output panel   │
+│         │     (Socket.IO     └─ HSV / controls       │
+│         │      + WebRTC)                             │
+│         │                                            │
+└─────────┼────────────────────────────────────────────┘
+          │  hoist_command (U/D/N)
+          │  via Socket.IO over Tailscale
+          ▼
+┌──────────────────────┐
+│   Raspberry Pi       │
+│                      │
+│  pi/main.py          │
+│  ├─ Socket.IO client │
+│  └─ Servo controller │──▶ Physical hoist
+│      (pigpio PWM)    │
+└──────────────────────┘
 ```
 
-- **Video streaming** — WebRTC (via `aiortc`)
-- **Telemetry & commands** — Socket.IO (via `python-socketio` / `socket.io-client`)
-- **Networking** — Tailscale for zero-config connectivity across networks
-- **Hoist output** — Discrete U (up) / D (down) / N (neutral) commands
+- **Laptop** runs all computation: camera capture, OpenCV tracking, failure detection, WebRTC streaming, and the Socket.IO signaling server
+- **Pi** is a thin client that receives hoist commands (U/D/N) over Socket.IO and drives the servo
+- **Dashboard** is a React app on the laptop that displays live video, telemetry, and controls
+- **Tailscale** provides zero-config networking between laptop and Pi
 
 ---
 
@@ -42,68 +53,70 @@ curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up
 ```
 
-Note each machine's Tailscale IP (`tailscale ip -4`).
+Note each machine's Tailscale IP: `tailscale ip -4`
 
-### 2. Raspberry Pi Setup
+### 2. Laptop — Server (vision + detection + signaling)
 
 ```bash
-cd pi/
-
-# Create a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
+cd server/
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# On Raspberry Pi you may also need system packages:
-#   sudo apt install python3-picamera2 libavdevice-dev libavfilter-dev \
-#                    libopus-dev libvpx-dev pkg-config
+# macOS may need: brew install ffmpeg
 
-# Run (on Raspberry Pi with Pi camera)
-python main.py --device pi
-
-# Run (on laptop webcam — for development)
-python main.py --device laptop
+python main.py
 ```
 
-The signaling server starts on port **8765** by default (change with `--port`).
+The server starts on port **8765** (change with `--port`).
 
-### 3. Dashboard Setup (Laptop)
+### 3. Laptop — Dashboard (React)
 
 ```bash
 cd dashboard/
-
-# Install dependencies
 npm install
 
-# Configure Pi address — edit .env
-#   For local dev (Pi code on same machine):  VITE_PI_HOST=localhost
-#   For remote Pi via Tailscale:              VITE_PI_HOST=100.x.x.x
-cp ../.env.example .env
-# Edit .env with your Pi's Tailscale IP
-
-# Start dev server
+# .env should have VITE_PI_HOST=localhost (default)
 npm run dev
 ```
 
-Open **http://localhost:5173** in your browser.
+Open **http://localhost:5173**.
+
+### 4. Raspberry Pi — Servo Client
+
+```bash
+cd pi/
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+
+# pigpio (system package):
+# sudo apt install pigpio python3-pigpio
+# sudo systemctl enable pigpiod && sudo systemctl start pigpiod
+
+# Run with real servo hardware
+python main.py --host <LAPTOP_TAILSCALE_IP>
+
+# Or debug without hardware
+python main.py --host <LAPTOP_TAILSCALE_IP> --device laptop
+```
 
 ---
 
-## Development on Laptop Only (No Pi)
+## Development — Fully Local (no Pi needed)
 
-For development without a Raspberry Pi:
+Run everything on the laptop to test end-to-end without hardware:
 
 ```bash
-# Terminal 1 — run the backend with laptop webcam
-cd pi/
-python main.py --device laptop
+# Terminal 1 — server (vision + detection + signaling)
+cd server/
+python main.py
 
-# Terminal 2 — run the dashboard
+# Terminal 2 — dashboard
 cd dashboard/
-# .env should have VITE_PI_HOST=localhost
 npm run dev
+
+# Terminal 3 — mock servo client (optional, to verify hoist commands)
+cd pi/
+python main.py --host localhost --device laptop
 ```
 
 ---
@@ -112,19 +125,24 @@ npm run dev
 
 ```
 EcoLift/
-├── pi/                          # Python backend (runs on Pi or laptop)
-│   ├── main.py                  # Single entry point — starts all tasks
+├── server/                      # Runs on laptop
+│   ├── main.py                  # Entry point — starts vision, detection, signaling
 │   ├── shared_state.py          # Thread-safe shared state
 │   ├── tracker.py               # OpenCV HSV colour tracking (thread)
-│   ├── failure_detector.py      # Failure detection algorithm (async)
-│   ├── signaling.py             # Socket.IO server + WebRTC signaling (async)
+│   ├── failure_detector.py      # Failure detection + hoist state machine (async)
+│   ├── signaling.py             # Socket.IO + WebRTC server (async)
 │   ├── streaming.py             # WebRTC video track
+│   └── requirements.txt
+│
+├── pi/                          # Runs on Raspberry Pi
+│   ├── main.py                  # Socket.IO client — receives hoist commands
+│   ├── servo.py                 # Servo controller (pigpio PWM or mock)
 │   └── requirements.txt
 │
 ├── dashboard/                   # React dashboard (runs on laptop)
 │   ├── src/
-│   │   ├── App.tsx              # Main layout
-│   │   ├── components/          # UI components
+│   │   ├── App.tsx
+│   │   ├── components/          # VideoFeed, TelemetryPanel, HoistPanel, etc.
 │   │   ├── hooks/               # useSocket, useWebRTC
 │   │   └── types.ts
 │   ├── .env                     # VITE_PI_HOST / VITE_PI_PORT
@@ -132,31 +150,16 @@ EcoLift/
 │
 ├── motion_tracking/             # Legacy standalone tracker
 ├── controller/                  # Legacy standalone controller
-├── .env.example
 └── README.md
 ```
 
 ---
 
-## Dashboard Features
+## Communication Summary
 
-| Feature | How |
-|---|---|
-| **Live video** | WebRTC stream from Pi camera |
-| **HSV pick** | Click on video feed to auto-select tracking colour |
-| **Manual HSV** | Type H/S/V bounds and click Apply |
-| **Recalibrate** | Reset tracking origin to current position |
-| **Telemetry** | Real-time velocity, assistance level (dx/dy toggleable via Debug) |
-| **Hoist indicator** | U (up) / D (down) / N (neutral) in the status bar |
-| **Debug overlay** | Toggle dx/dy text on the video feed and telemetry cards |
-| **Status** | Failure, stall, and assistance indicators |
-| **Charts** | Rolling 15-second plots of bar height and assistance |
-
----
-
-## Tailscale Tips
-
-- Run `tailscale ip -4` on each machine to find its VPN address.
-- Both machines must be signed in to the same Tailscale account.
-- No port forwarding or firewall rules needed — Tailscale handles NAT traversal.
-- If the Pi's Tailscale IP changes, update `dashboard/.env` and restart the dev server.
+| Path | Protocol | Data |
+|---|---|---|
+| Server → Dashboard | WebRTC | Live video stream |
+| Server → Dashboard | Socket.IO | Telemetry (dx, dy, velocity, assistance, hoist direction) |
+| Dashboard → Server | Socket.IO | Commands (HSV pick, recalibrate, set HSV, debug toggle) |
+| Server → Pi | Socket.IO | Hoist commands (U / D / N) |
