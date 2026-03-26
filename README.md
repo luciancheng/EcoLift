@@ -15,7 +15,7 @@
 │  server/main.py              dashboard/ (React)      │
 │  ├─ Vision (OpenCV)          ├─ Live video (WebRTC)  │
 │  ├─ Failure Detector ──────▶ ├─ Telemetry            │
-│  └─ Signaling Server ◀────▶ ├─ Hoist output panel   │
+│  └─ Signaling Server ◀────▶  ├─ Hoist output panel   │
 │         │     (Socket.IO     └─ HSV / controls       │
 │         │      + WebRTC)                             │
 │         │                                            │

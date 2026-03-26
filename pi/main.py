@@ -3,7 +3,7 @@ EcoLift Pi — thin servo client that connects to the laptop server
 via Socket.IO and drives the servo based on hoist commands (U/D/N).
 
 Usage:
-  python main.py --host 100.x.x.x                  # Pi with real servo
+  python main.py --host 100.x.x.x                  # Pi with real servo, IP is the laptop's tailscale IP
   python main.py --host 100.x.x.x --device laptop  # debug without hardware
   python main.py --host localhost  --device laptop   # fully local debug
 """
