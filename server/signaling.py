@@ -29,6 +29,7 @@ class SignalingServer:
         self.sio.attach(self.app)
 
         self.pcs: set[RTCPeerConnection] = set()
+        self._pi_sids: set[str] = set()
         self._register_events()
 
     # ── Socket.IO event handlers ──
@@ -37,6 +38,7 @@ class SignalingServer:
         sio = self.sio
         state = self.state
         pcs = self.pcs
+        pi_sids = self._pi_sids
 
         @sio.event
         async def connect(sid, environ):
@@ -45,6 +47,16 @@ class SignalingServer:
         @sio.event
         async def disconnect(sid):
             print(f"[Signaling] Client disconnected: {sid}")
+            if sid in pi_sids:
+                pi_sids.discard(sid)
+                state.set_pi_connected(len(pi_sids) > 0)
+                print("[Signaling] Pi disconnected")
+
+        @sio.event
+        async def register_pi(sid, data=None):
+            pi_sids.add(sid)
+            state.set_pi_connected(True)
+            print(f"[Signaling] Pi registered: {sid}")
 
         @sio.event
         async def offer(sid, data):

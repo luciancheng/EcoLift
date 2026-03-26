@@ -66,10 +66,12 @@ export default function App() {
         connected={connected}
         streaming={streaming}
         failure={telemetry?.failure ?? false}
+        trackingActive={telemetry?.tracking_active ?? false}
+        piConnected={telemetry?.pi_connected ?? false}
       />
 
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-3 p-3 min-h-0 overflow-hidden">
-        {/* Left column: video + chart + hoist */}
+        {/* Left column: video on top, chart below */}
         <div className="flex flex-col gap-3 min-h-0 overflow-hidden">
           <VideoFeed
             videoRef={videoRef}
@@ -77,19 +79,18 @@ export default function App() {
             streaming={streaming}
             onReconnect={reconnect}
           />
-          <div className="grid grid-cols-[1fr_1fr] gap-2 min-h-0">
-            <TelemetryChart history={history} />
-            <HoistPanel
-              direction={telemetry?.hoist_direction ?? "N"}
-              failure={telemetry?.failure ?? false}
-              stalled={telemetry?.stalled ?? false}
-              helping={telemetry?.helping ?? false}
-            />
-          </div>
+          <TelemetryChart history={history} />
         </div>
 
-        {/* Right column: telemetry + controls */}
+        {/* Right column: full height — hoist + telemetry + controls */}
         <div className="flex flex-col gap-3 min-h-0 overflow-y-auto">
+          <HoistPanel
+            direction={telemetry?.hoist_direction ?? "N"}
+            failure={telemetry?.failure ?? false}
+            stalled={telemetry?.stalled ?? false}
+            helping={telemetry?.helping ?? false}
+            trackingActive={telemetry?.tracking_active ?? false}
+          />
           <TelemetryPanel data={telemetry} />
           <ControlPanel
             socket={socket}

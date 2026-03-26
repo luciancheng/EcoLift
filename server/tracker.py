@@ -113,6 +113,7 @@ class VisionTask:
                 c = self._best_contour(contours)
 
                 if c is not None:
+                    self.state.set_tracking_active(True)
                     M = cv2.moments(c)
                     cv2.drawContours(frame, [c], -1, (0, 255, 0), 2)
 
@@ -129,6 +130,8 @@ class VisionTask:
 
                         dx = cx - origin_center[0]
                         dy = -(cy - origin_center[1])
+                else:
+                    self.state.set_tracking_active(False)
 
                 # ── Debug overlay ─────────────────────────────────────────
                 if self.state.get_debug_overlay():

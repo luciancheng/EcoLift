@@ -27,6 +27,7 @@ async def main(host: str, port: int, device: str):
     @sio.event
     async def connect():
         print(f"[Pi] Connected to server at {host}:{port}")
+        await sio.emit("register_pi")
 
     @sio.event
     async def disconnect():

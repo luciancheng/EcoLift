@@ -27,6 +27,9 @@ class SharedState:
         self._helping = False
         self._hoist_direction = "N"
 
+        self._tracking_active = False
+        self._pi_connected = False
+
         self._hsv_pick_coords: Optional[Tuple[int, int]] = None
         self._recalibrate_requested = False
         self._show_debug_overlay = False
@@ -89,6 +92,8 @@ class SharedState:
                 "stalled": self._stalled,
                 "helping": self._helping,
                 "hoist_direction": self._hoist_direction,
+                "tracking_active": self._tracking_active,
+                "pi_connected": self._pi_connected,
                 "lower_hsv": self.lower_hsv.tolist(),
                 "upper_hsv": self.upper_hsv.tolist(),
             }
@@ -96,6 +101,26 @@ class SharedState:
     def get_hoist_direction(self) -> str:
         with self._lock:
             return self._hoist_direction
+
+    # ── Tracking active flag ──
+
+    def set_tracking_active(self, active: bool):
+        with self._lock:
+            self._tracking_active = active
+
+    def get_tracking_active(self) -> bool:
+        with self._lock:
+            return self._tracking_active
+
+    # ── Pi connected flag ──
+
+    def set_pi_connected(self, connected: bool):
+        with self._lock:
+            self._pi_connected = connected
+
+    def get_pi_connected(self) -> bool:
+        with self._lock:
+            return self._pi_connected
 
     # ── HSV range ──
 

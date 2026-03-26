@@ -16,11 +16,11 @@ interface Props {
 export function TelemetryChart({ history }: Props) {
   if (history.length < 2) {
     return (
-      <div className="flex flex-col gap-1.5 min-h-0 flex-1">
+      <div className="flex flex-col gap-1.5 flex-1 min-h-[120px]">
         <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
           Bar Height
         </h2>
-        <div className="flex-1 flex items-center justify-center rounded-lg bg-zinc-800/30 border border-zinc-700/50 text-zinc-500 text-xs">
+        <div className="flex-1 flex items-center justify-center rounded-lg bg-zinc-800/30 border border-zinc-700/50 text-zinc-500 text-xs min-h-0">
           Collecting data...
         </div>
       </div>
@@ -34,7 +34,7 @@ export function TelemetryChart({ history }: Props) {
   }));
 
   return (
-    <div className="flex flex-col gap-1.5 min-h-0 flex-1">
+    <div className="flex flex-col gap-1.5 flex-1 min-h-[120px]">
       <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
         Bar Height (dy)
       </h2>

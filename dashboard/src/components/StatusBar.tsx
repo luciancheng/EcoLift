@@ -1,12 +1,42 @@
-import { Leaf, Wifi, WifiOff } from "lucide-react";
+import { Leaf, Wifi, WifiOff, Cpu, Eye, EyeOff } from "lucide-react";
 
 interface Props {
   connected: boolean;
   streaming: boolean;
   failure: boolean;
+  trackingActive: boolean;
+  piConnected: boolean;
 }
 
-export function StatusBar({ connected, streaming, failure }: Props) {
+function Pill({
+  active,
+  activeClass,
+  inactiveClass = "bg-zinc-700/50 text-zinc-400",
+  children,
+}: {
+  active: boolean;
+  activeClass: string;
+  inactiveClass?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        active ? activeClass : inactiveClass
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
+export function StatusBar({
+  connected,
+  streaming,
+  failure,
+  trackingActive,
+  piConnected,
+}: Props) {
   return (
     <header className="flex items-center justify-between px-5 py-2 bg-zinc-900 border-b border-zinc-800 shrink-0">
       <div className="flex items-center gap-2.5">
@@ -16,7 +46,7 @@ export function StatusBar({ connected, streaming, failure }: Props) {
         </h1>
       </div>
 
-      <div className="flex items-center gap-3 text-sm">
+      <div className="flex items-center gap-2 text-sm">
         {failure && (
           <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/15 text-red-400 text-xs font-medium animate-pulse">
             <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
@@ -24,22 +54,46 @@ export function StatusBar({ connected, streaming, failure }: Props) {
           </span>
         )}
 
-        <span
-          className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            streaming ? "bg-emerald-500/15 text-emerald-400" : "bg-zinc-700/50 text-zinc-400"
-          }`}
+        <Pill
+          active={trackingActive}
+          activeClass="bg-emerald-500/15 text-emerald-400"
+          inactiveClass="bg-red-500/15 text-red-400"
         >
-          {streaming ? "Stream Live" : "No Stream"}
-        </span>
+          {trackingActive ? (
+            <Eye className="w-3 h-3" />
+          ) : (
+            <EyeOff className="w-3 h-3" />
+          )}
+          {trackingActive ? "Tracking" : "Track Lost"}
+        </Pill>
 
-        <span
-          className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            connected ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
-          }`}
+        <Pill
+          active={streaming}
+          activeClass="bg-emerald-500/15 text-emerald-400"
         >
-          {connected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-          {connected ? "Connected" : "Disconnected"}
-        </span>
+          {streaming ? "Stream" : "No Stream"}
+        </Pill>
+
+        <Pill
+          active={connected}
+          activeClass="bg-emerald-500/15 text-emerald-400"
+          inactiveClass="bg-red-500/15 text-red-400"
+        >
+          {connected ? (
+            <Wifi className="w-3 h-3" />
+          ) : (
+            <WifiOff className="w-3 h-3" />
+          )}
+          Server
+        </Pill>
+
+        <Pill
+          active={piConnected}
+          activeClass="bg-emerald-500/15 text-emerald-400"
+        >
+          <Cpu className="w-3 h-3" />
+          Pi
+        </Pill>
       </div>
     </header>
   );

@@ -37,7 +37,35 @@ class FailureDetector:
 
     async def run(self):
         print("[Detector] Failure detection online")
+        tracking_was_active = False
+
         while True:
+            tracking_active = self.state.get_tracking_active()
+
+            if not tracking_active:
+                self.hoist_direction = "N"
+                self.start_help = False
+                self._was_helping = False
+                self.state.update_detection(
+                    velocity=0.0,
+                    assistance=self.u,
+                    failure=False,
+                    stalled=False,
+                    helping=False,
+                    hoist_direction="N",
+                )
+                tracking_was_active = False
+                await asyncio.sleep(0.01)
+                continue
+
+            if not tracking_was_active:
+                self.last_time = None
+                self._prev_dy = None
+                self.smoothed_vel = None
+                self.last_motion_time = None
+                self.last_time_above_threshold = None
+                tracking_was_active = True
+
             tracking = self.state.get_tracking()
             dy = tracking["dy"]
             t = time.time()

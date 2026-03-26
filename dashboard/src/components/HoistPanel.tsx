@@ -1,10 +1,11 @@
-import { ArrowUp, ArrowDown, Minus, AlertTriangle, Pause, HandHelping } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, AlertTriangle, Pause, HandHelping, EyeOff } from "lucide-react";
 
 interface Props {
   direction: "U" | "D" | "N";
   failure: boolean;
   stalled: boolean;
   helping: boolean;
+  trackingActive: boolean;
 }
 
 const HOIST_CONFIG: Record<
@@ -56,49 +57,64 @@ function StatusRow({
   icon: Icon,
   label,
   active,
+  color = "red",
 }: {
   icon: typeof AlertTriangle;
   label: string;
   active: boolean;
+  color?: "red" | "amber";
 }) {
+  const activeClass =
+    color === "red"
+      ? "text-red-400 bg-red-500/10"
+      : "text-amber-400 bg-amber-500/10";
+  const dotClass =
+    color === "red" ? "bg-red-400 animate-pulse" : "bg-amber-400 animate-pulse";
+
   return (
     <div
       className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium ${
-        active
-          ? "text-red-400 bg-red-500/10"
-          : "text-zinc-600 bg-zinc-800/30"
+        active ? activeClass : "text-zinc-600 bg-zinc-800/30"
       }`}
     >
       <Icon className="w-3 h-3" />
       {label}
       <span
         className={`ml-auto w-1.5 h-1.5 rounded-full ${
-          active ? "bg-red-400 animate-pulse" : "bg-zinc-700"
+          active ? dotClass : "bg-zinc-700"
         }`}
       />
     </div>
   );
 }
 
-export function HoistPanel({ direction, failure, stalled, helping }: Props) {
+export function HoistPanel({ direction, failure, stalled, helping, trackingActive }: Props) {
   const cfg = HOIST_CONFIG[direction] ?? HOIST_CONFIG.N;
   const Icon = cfg.icon;
 
   return (
-    <div className="flex flex-col gap-1.5 min-h-0 flex-1">
+    <div className="flex flex-col gap-1.5 shrink-0">
       <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
         Hoist Output
       </h2>
 
       <div
-        className={`flex-1 flex flex-col rounded-lg border ${cfg.bg} ${cfg.border} ${cfg.glow} transition-all duration-300`}
+        className={`flex flex-col rounded-lg border ${cfg.bg} ${cfg.border} ${cfg.glow} transition-all duration-300`}
       >
-        {/* Main direction indicator */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-1 p-3">
-          <div className={`p-3 rounded-xl ${cfg.iconBg} transition-colors duration-300`}>
-            <Icon className={`w-8 h-8 ${cfg.text}`} strokeWidth={2.5} />
+        {/* Track-loss warning */}
+        {!trackingActive && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border-b border-red-500/20 rounded-t-lg text-xs font-medium text-red-400">
+            <EyeOff className="w-3.5 h-3.5" />
+            Track lost — hoist halted
           </div>
-          <span className={`text-2xl font-bold font-mono tracking-widest ${cfg.text}`}>
+        )}
+
+        {/* Main direction indicator */}
+        <div className="flex flex-col items-center justify-center gap-0.5 py-3 px-3">
+          <div className={`p-2 rounded-xl ${cfg.iconBg} transition-colors duration-300`}>
+            <Icon className={`w-6 h-6 ${cfg.text}`} strokeWidth={2.5} />
+          </div>
+          <span className={`text-xl font-bold font-mono tracking-widest ${cfg.text}`}>
             {cfg.label}
           </span>
           <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
@@ -107,10 +123,11 @@ export function HoistPanel({ direction, failure, stalled, helping }: Props) {
         </div>
 
         {/* Status flags */}
-        <div className="flex flex-col gap-1 p-2 border-t border-zinc-700/30">
+        <div className="grid grid-cols-2 gap-1 p-2 border-t border-zinc-700/30">
           <StatusRow icon={AlertTriangle} label="Failure" active={failure} />
           <StatusRow icon={Pause} label="Stalled" active={stalled} />
           <StatusRow icon={HandHelping} label="Assisting" active={helping} />
+          <StatusRow icon={EyeOff} label="Track Lost" active={!trackingActive} color="amber" />
         </div>
       </div>
     </div>
