@@ -79,7 +79,10 @@ export default function App() {
             streaming={streaming}
             onReconnect={reconnect}
           />
-          <TelemetryChart history={history} />
+          <TelemetryChart
+            history={history}
+            failureYThreshold={telemetry?.failure_y_threshold ?? -120}
+          />
         </div>
 
         {/* Right column: full height — hoist + telemetry + controls */}

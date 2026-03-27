@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { RotateCcw, Sliders, Send, Bug } from "lucide-react";
+import { RotateCcw, Sliders, Send, Bug, TriangleAlert } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import type { Telemetry } from "../types";
 
@@ -17,9 +17,11 @@ export function ControlPanel({ socket, telemetry, showDebug, onToggleDebug }: Pr
   const [upperH, setUpperH] = useState(10);
   const [upperS, setUpperS] = useState(255);
   const [upperV, setUpperV] = useState(255);
+  const [failureThreshold, setFailureThreshold] = useState(-120);
 
   useEffect(() => {
     if (telemetry) {
+      setFailureThreshold(telemetry.failure_y_threshold);
       setLowerH(telemetry.lower_hsv[0]);
       setLowerS(telemetry.lower_hsv[1]);
       setLowerV(telemetry.lower_hsv[2]);
@@ -27,7 +29,8 @@ export function ControlPanel({ socket, telemetry, showDebug, onToggleDebug }: Pr
       setUpperS(telemetry.upper_hsv[1]);
       setUpperV(telemetry.upper_hsv[2]);
     }
-  }, [telemetry?.lower_hsv[0], telemetry?.lower_hsv[1], telemetry?.lower_hsv[2],
+  }, [telemetry?.failure_y_threshold,
+      telemetry?.lower_hsv[0], telemetry?.lower_hsv[1], telemetry?.lower_hsv[2],
       telemetry?.upper_hsv[0], telemetry?.upper_hsv[1], telemetry?.upper_hsv[2]]);
 
   const handleApplyHSV = () => {
@@ -36,6 +39,11 @@ export function ControlPanel({ socket, telemetry, showDebug, onToggleDebug }: Pr
       lower: [lowerH, lowerS, lowerV],
       upper: [upperH, upperS, upperV],
     });
+  };
+
+  const handleApplyThreshold = () => {
+    if (!socket) return;
+    socket.emit("set_failure_threshold", { value: failureThreshold });
   };
 
   const handleRecalibrate = () => {
@@ -96,6 +104,31 @@ export function ControlPanel({ socket, telemetry, showDebug, onToggleDebug }: Pr
             Recalibrate
           </button>
         </div>
+      </div>
+
+      <div className="p-3 rounded-lg bg-zinc-800/30 border border-zinc-700/50">
+        <div className="flex items-center gap-2 mb-2">
+          <TriangleAlert className="w-3.5 h-3.5 text-red-400" />
+          <p className="text-xs font-medium text-zinc-300">Failure Y Threshold</p>
+        </div>
+        <div className="flex gap-1.5">
+          <input
+            type="number"
+            value={failureThreshold}
+            onChange={(e) => setFailureThreshold(Number(e.target.value))}
+            className="flex-1 px-2 py-1.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs font-mono focus:outline-none focus:border-red-500 transition-colors"
+          />
+          <button
+            onClick={handleApplyThreshold}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+          >
+            <Send className="w-3 h-3" />
+            Set
+          </button>
+        </div>
+        <p className="text-[10px] text-zinc-600 mt-1.5">
+          dy below this value triggers failure detection
+        </p>
       </div>
 
       <button

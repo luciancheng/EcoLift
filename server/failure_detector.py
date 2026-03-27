@@ -12,7 +12,6 @@ class FailureDetector:
     no UDP socket and no matplotlib plotting.
     """
 
-    FAILURE_Y_THRESHOLD = -300
     STALL_VEL_THRESHOLD = 20
     STALL_TIME = 2.0
     ASSIST_Y_THRESHOLD = -10
@@ -105,11 +104,13 @@ class FailureDetector:
             if speed > self.STALL_VEL_THRESHOLD:
                 self.last_motion_time = t
 
-            if dy > self.FAILURE_Y_THRESHOLD:
+            failure_y = self.state.get_failure_y_threshold()
+
+            if dy > failure_y:
                 self.last_time_above_threshold = t
 
             stalled = (t - self.last_motion_time) > self.STALL_TIME
-            fail_pos = (dy < self.FAILURE_Y_THRESHOLD) and (
+            fail_pos = (dy < failure_y) and (
                 (t - self.last_time_above_threshold) > self.STALL_TIME
             )
             failure_detected = fail_pos or stalled

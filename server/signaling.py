@@ -103,6 +103,11 @@ class SignalingServer:
             state.set_debug_overlay(bool(data.get("enabled", False)))
             print(f"[Signaling] Debug overlay: {data.get('enabled')}")
 
+        @sio.event
+        async def set_failure_threshold(sid, data):
+            state.set_failure_y_threshold(float(data["value"]))
+            print(f"[Signaling] Failure Y threshold: {data['value']}")
+
     # ── Telemetry + hoist command broadcast loop ──
 
     async def _broadcast_telemetry(self):

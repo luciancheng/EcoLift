@@ -11,9 +11,10 @@ import type { TelemetryPoint } from "../types";
 
 interface Props {
   history: TelemetryPoint[];
+  failureYThreshold: number;
 }
 
-export function TelemetryChart({ history }: Props) {
+export function TelemetryChart({ history, failureYThreshold }: Props) {
   if (history.length < 2) {
     return (
       <div className="flex flex-col gap-1.5 flex-1 min-h-[120px]">
@@ -56,7 +57,12 @@ export function TelemetryChart({ history }: Props) {
               width={35}
             />
             <ReferenceLine y={0} stroke="#52525b" strokeDasharray="3 3" />
-            <ReferenceLine y={-300} stroke="#ef4444" strokeDasharray="3 3" />
+            <ReferenceLine
+              y={failureYThreshold}
+              stroke="#ef4444"
+              strokeDasharray="3 3"
+              label={{ value: `Fail: ${failureYThreshold}`, fill: "#ef4444", fontSize: 9, position: "insideBottomLeft" }}
+            />
             <Line
               type="monotone"
               dataKey="dy"

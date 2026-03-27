@@ -27,6 +27,7 @@ class SharedState:
         self._helping = False
         self._hoist_direction = "N"
 
+        self._failure_y_threshold = -120
         self._tracking_active = False
         self._pi_connected = False
 
@@ -92,6 +93,7 @@ class SharedState:
                 "stalled": self._stalled,
                 "helping": self._helping,
                 "hoist_direction": self._hoist_direction,
+                "failure_y_threshold": self._failure_y_threshold,
                 "tracking_active": self._tracking_active,
                 "pi_connected": self._pi_connected,
                 "lower_hsv": self.lower_hsv.tolist(),
@@ -101,6 +103,16 @@ class SharedState:
     def get_hoist_direction(self) -> str:
         with self._lock:
             return self._hoist_direction
+
+    # ── Failure Y threshold ──
+
+    def set_failure_y_threshold(self, value: float):
+        with self._lock:
+            self._failure_y_threshold = value
+
+    def get_failure_y_threshold(self) -> float:
+        with self._lock:
+            return self._failure_y_threshold
 
     # ── Tracking active flag ──
 

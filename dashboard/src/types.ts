@@ -7,6 +7,7 @@ export interface Telemetry {
   stalled: boolean;
   helping: boolean;
   hoist_direction: "U" | "D" | "N";
+  failure_y_threshold: number;
   tracking_active: boolean;
   pi_connected: boolean;
   lower_hsv: [number, number, number];
