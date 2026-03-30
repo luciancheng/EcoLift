@@ -34,23 +34,30 @@ class ServoController:
     SERVO2_DOWN = DEFAULT_POS +  550   # 950
 
     POLL_INTERVAL = 0.05  # 20 Hz
+    RESET_DOWN_DURATION = 3.0
 
     def __init__(self, device: str):
         self.device = device
         self._direction = "N"
         self._lock = threading.Lock()
         self._stop = threading.Event()
+        self._reset_requested = threading.Event()
+        self._resetting = False
 
     def stop(self):
         self._stop.set()
 
     def set_direction(self, direction: str):
         with self._lock:
-            self._direction = direction
+            if not self._resetting:
+                self._direction = direction
 
     def get_direction(self) -> str:
         with self._lock:
             return self._direction
+
+    def request_reset(self):
+        self._reset_requested.set()
 
     def run(self):
         if self.device == "pi":
@@ -82,6 +89,25 @@ class ServoController:
         prev = "N"
         try:
             while not self._stop.is_set():
+                if self._reset_requested.is_set():
+                    self._reset_requested.clear()
+                    with self._lock:
+                        self._resetting = True
+                    print("[Servo] RESET: moving DOWN")
+                    self._move1(pi, self.SERVO1_DOWN)
+                    self._move2(pi, self.SERVO2_DOWN)
+                    
+                    time.sleep(self.RESET_DOWN_DURATION)
+                    
+                    print("[Servo] RESET: returning to DEFAULT")
+                    self._move(pi, self.DEFAULT_POS, self.DEFAULT_POS)
+                    with self._lock:
+                        self._resetting = False
+                        self._direction = "N"
+                    prev = "N"
+                    print("[Servo] RESET complete")
+                    continue
+
                 d = self.get_direction()
                 if d != prev:
                     if d == "U":
@@ -112,6 +138,20 @@ class ServoController:
         print("[Servo] Running in mock mode (no hardware, 2 servos)")
         prev = "N"
         while not self._stop.is_set():
+            if self._reset_requested.is_set():
+                self._reset_requested.clear()
+                with self._lock:
+                    self._resetting = True
+                print(f"[Servo mock] RESET: DOWN for {self.RESET_DOWN_DURATION}s")
+                time.sleep(self.RESET_DOWN_DURATION)
+                print("[Servo mock] RESET: returning to DEFAULT")
+                with self._lock:
+                    self._resetting = False
+                    self._direction = "N"
+                prev = "N"
+                print("[Servo mock] RESET complete")
+                continue
+
             d = self.get_direction()
             if d != prev:
                 print(f"[Servo mock] → {d} (GPIO {self.SERVO1_PIN} + GPIO {self.SERVO2_PIN})")

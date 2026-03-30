@@ -37,6 +37,11 @@ async def main(host: str, port: int, device: str):
     async def on_hoist_command(data):
         servo.set_direction(data["direction"])
 
+    @sio.on("reset_hoist")
+    async def on_reset_hoist(data=None):
+        print("[Pi] Reset hoist requested")
+        servo.request_reset()
+
     url = f"http://{host}:{port}"
     print(f"[Pi] Connecting to {url} ...")
 

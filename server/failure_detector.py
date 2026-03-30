@@ -14,7 +14,7 @@ class FailureDetector:
 
     STALL_VEL_THRESHOLD = 20
     STALL_TIME = 2.0
-    ASSIST_Y_THRESHOLD = -50
+    ASSIST_Y_THRESHOLD = -60
     VEL_SMOOTHING_ALPHA = 0.2
     RAMP_UP_RATE = 0.25
     RAMP_DOWN_RATE = 0.4
@@ -113,7 +113,8 @@ class FailureDetector:
             fail_pos = (dy < failure_y) and (
                 (t - self.last_time_above_threshold) > self.STALL_TIME
             )
-            failure_detected = fail_pos or stalled
+            in_danger_zone = dy < self.ASSIST_Y_THRESHOLD
+            failure_detected = fail_pos or (stalled and in_danger_zone)
 
             if failure_detected:
                 self.start_help = True

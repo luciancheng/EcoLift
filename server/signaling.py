@@ -108,6 +108,12 @@ class SignalingServer:
             state.set_failure_y_threshold(float(data["value"]))
             print(f"[Signaling] Failure Y threshold: {data['value']}")
 
+        @sio.event
+        async def reset_hoist(sid, data=None):
+            print("[Signaling] Reset hoist — forwarding to Pi")
+            for pi_sid in pi_sids:
+                await sio.emit("reset_hoist", {}, to=pi_sid)
+
     # ── Telemetry + hoist command broadcast loop ──
 
     async def _broadcast_telemetry(self):

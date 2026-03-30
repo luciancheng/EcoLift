@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { RotateCcw, Sliders, Send, Bug, TriangleAlert } from "lucide-react";
+import { RotateCcw, Sliders, Send, Bug, TriangleAlert, ArrowDownToLine } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import type { Telemetry } from "../types";
 
@@ -44,6 +44,11 @@ export function ControlPanel({ socket, telemetry, showDebug, onToggleDebug }: Pr
   const handleApplyThreshold = () => {
     if (!socket) return;
     socket.emit("set_failure_threshold", { value: failureThreshold });
+  };
+
+  const handleResetHoist = () => {
+    if (!socket) return;
+    socket.emit("reset_hoist");
   };
 
   const handleRecalibrate = () => {
@@ -105,6 +110,15 @@ export function ControlPanel({ socket, telemetry, showDebug, onToggleDebug }: Pr
           </button>
         </div>
       </div>
+
+      <button
+        onClick={handleResetHoist}
+        className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
+      >
+        <ArrowDownToLine className="w-4 h-4" />
+        Reset Hoist Position
+        <span className="ml-auto text-[10px] text-amber-500/60">DOWN → DEFAULT</span>
+      </button>
 
       <div className="p-3 rounded-lg bg-zinc-800/30 border border-zinc-700/50">
         <div className="flex items-center gap-2 mb-2">
