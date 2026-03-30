@@ -31,7 +31,7 @@ class ServoController:
 
     # Servo 2 (GPIO 13) — ±550µs
     SERVO2_UP = DEFAULT_POS - 550     # 2050
-    SERVO2_DOWN = DEFAULT_POS + 550   # 950
+    SERVO2_DOWN = DEFAULT_POS +  550   # 950
 
     POLL_INTERVAL = 0.05  # 20 Hz
 
@@ -59,7 +59,13 @@ class ServoController:
             self._run_mock()
 
     def _move(self, pi, pos1: int, pos2: int):
+        pi.set_servo_pulsewidth(self.SERVO2_PIN, pos2)
         pi.set_servo_pulsewidth(self.SERVO1_PIN, pos1)
+
+    def _move1(self, pi, pos1: int):
+        pi.set_servo_pulsewidth(self.SERVO1_PIN, pos1)
+
+    def _move2(self, pi, pos2: int):
         pi.set_servo_pulsewidth(self.SERVO2_PIN, pos2)
 
     def _run_hardware(self):
@@ -79,10 +85,14 @@ class ServoController:
                 d = self.get_direction()
                 if d != prev:
                     if d == "U":
-                        self._move(pi, self.SERVO1_UP, self.SERVO2_UP)
+                        self._move1(pi, self.SERVO1_UP)
+                        time.sleep(0.3)
+                        self._move2(pi, self.SERVO2_UP)
                         print("[Servo] → UP (both)")
                     elif d == "D":
-                        self._move(pi, self.SERVO1_DOWN, self.SERVO2_DOWN)
+                        self._move1(pi, self.SERVO1_DOWN)
+                        time.sleep(0.6)
+                        self._move2(pi, self.SERVO2_DOWN)
                         print("[Servo] → DOWN (both)")
                     else:
                         self._move(pi, self.DEFAULT_POS, self.DEFAULT_POS)
