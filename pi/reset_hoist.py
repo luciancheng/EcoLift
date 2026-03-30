@@ -24,6 +24,6 @@ def move(pi, pos1: int, pos2: int):
 
 move(pi, SERVO1_DOWN, SERVO2_DOWN)
 
-time.sleep(4)
+time.sleep(3)
 
 move(pi, DEFAULT_POS, DEFAULT_POS)
