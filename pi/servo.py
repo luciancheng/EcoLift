@@ -1,6 +1,9 @@
 """
-Servo controller that receives hoist direction (U/D/N) and drives
-a servo via pigpio PWM.
+Dual servo controller that receives hoist direction (U/D/N) and drives
+two servos simultaneously via pigpio PWM.
+
+Servo 1 (GPIO 18): left servo,  ±1000µs range (500–2500µs)
+Servo 2 (GPIO 13): right servo, ±550µs range  (950–2050µs)
 
 In --device pi mode, controls real hardware.
 In --device laptop mode, just logs direction changes (for debugging).
@@ -17,12 +20,18 @@ import threading
 
 
 class ServoController:
-    SERVO_PIN = 18
+    SERVO1_PIN = 18  # left servo
+    SERVO2_PIN = 13  # right servo
 
-    # Calibrated PWM pulse widths (µs). 270° servo range is 500–2500µs.
     DEFAULT_POS = 1500
-    UP_POS = DEFAULT_POS + 1000       # 2500 – max CW
-    DOWN_POS = DEFAULT_POS - 1000     # 500  – max CCW
+
+    # Servo 1 (GPIO 18) — ±1000µs
+    SERVO1_UP = DEFAULT_POS + 1000    # 2500
+    SERVO1_DOWN = DEFAULT_POS - 1000  # 500
+
+    # Servo 2 (GPIO 13) — ±550µs
+    SERVO2_UP = DEFAULT_POS + 550     # 2050
+    SERVO2_DOWN = DEFAULT_POS - 550   # 950
 
     POLL_INTERVAL = 0.05  # 20 Hz
 
@@ -49,6 +58,10 @@ class ServoController:
         else:
             self._run_mock()
 
+    def _move(self, pi, pos1: int, pos2: int):
+        pi.set_servo_pulsewidth(self.SERVO1_PIN, pos1)
+        pi.set_servo_pulsewidth(self.SERVO2_PIN, pos2)
+
     def _run_hardware(self):
         import pigpio
 
@@ -57,8 +70,8 @@ class ServoController:
             print("[Servo] Could not connect to pigpio daemon — is pigpiod running?")
             return
 
-        print("[Servo] Connected to pigpio, moving to default position")
-        pi.set_servo_pulsewidth(self.SERVO_PIN, self.DEFAULT_POS)
+        print("[Servo] Connected to pigpio, moving both servos to default position")
+        self._move(pi, self.DEFAULT_POS, self.DEFAULT_POS)
 
         prev = "N"
         try:
@@ -66,32 +79,32 @@ class ServoController:
                 d = self.get_direction()
                 if d != prev:
                     if d == "U":
-                        pi.set_servo_pulsewidth(self.SERVO_PIN, self.UP_POS)
-                        print("[Servo] → UP")
+                        self._move(pi, self.SERVO1_UP, self.SERVO2_UP)
+                        print("[Servo] → UP (both)")
                     elif d == "D":
-                        pi.set_servo_pulsewidth(self.SERVO_PIN, self.DOWN_POS)
-                        print("[Servo] → DOWN")
+                        self._move(pi, self.SERVO1_DOWN, self.SERVO2_DOWN)
+                        print("[Servo] → DOWN (both)")
                     else:
-                        pi.set_servo_pulsewidth(self.SERVO_PIN, self.DEFAULT_POS)
-                        print("[Servo] → NEUTRAL")
+                        self._move(pi, self.DEFAULT_POS, self.DEFAULT_POS)
+                        print("[Servo] → NEUTRAL (both)")
                     prev = d
                 time.sleep(self.POLL_INTERVAL)
         finally:
-            print("[Servo] Returning to default and releasing pin")
-            pi.set_servo_pulsewidth(self.SERVO_PIN, self.DEFAULT_POS)
+            print("[Servo] Returning to default and releasing pins")
+            self._move(pi, self.DEFAULT_POS, self.DEFAULT_POS)
             time.sleep(0.5)
-            pi.set_servo_pulsewidth(self.SERVO_PIN, 0)
+            self._move(pi, 0, 0)
             pi.stop()
             print("[Servo] Stopped")
 
     def _run_mock(self):
         """Laptop mode — log direction changes without hardware."""
-        print("[Servo] Running in mock mode (no hardware)")
+        print("[Servo] Running in mock mode (no hardware, 2 servos)")
         prev = "N"
         while not self._stop.is_set():
             d = self.get_direction()
             if d != prev:
-                print(f"[Servo mock] → {d}")
+                print(f"[Servo mock] → {d} (GPIO {self.SERVO1_PIN} + GPIO {self.SERVO2_PIN})")
                 prev = d
             time.sleep(self.POLL_INTERVAL)
         print("[Servo mock] Stopped")
