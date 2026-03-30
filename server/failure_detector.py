@@ -136,7 +136,7 @@ class FailureDetector:
                 self.hoist_direction = "U"
                 self._down_since = None
             elif was_helping and not self.start_help:
-                self.hoist_direction = "D"
+                self.hoist_direction = "N"
                 self._down_since = t
             elif self.hoist_direction == "D":
                 if self._down_since is not None and (t - self._down_since) > self.DOWN_DURATION:
