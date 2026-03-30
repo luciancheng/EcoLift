@@ -4,7 +4,6 @@ import time
 pi = pigpio.pi()
 if not pi.connected:
     print("[Servo] Could not connect to pigpio daemon — is pigpiod running?")
-    return
 
 SERVO1_PIN = 18  # left servo
 SERVO2_PIN = 13  # right servo
