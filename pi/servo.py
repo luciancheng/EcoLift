@@ -34,7 +34,7 @@ class ServoController:
     SERVO2_DOWN = DEFAULT_POS +  560   # 950
 
     POLL_INTERVAL = 0.05  # 20 Hz
-    RESET_DOWN_DURATION = 3.0
+    RESET_DOWN_DURATION = 2.75
 
     def __init__(self, device: str):
         self.device = device
