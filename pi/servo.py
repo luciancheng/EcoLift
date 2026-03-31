@@ -30,8 +30,8 @@ class ServoController:
     SERVO1_DOWN = DEFAULT_POS + 1000  # 500
 
     # Servo 2 (GPIO 13) — ±550µs
-    SERVO2_UP = DEFAULT_POS - 550     # 2050
-    SERVO2_DOWN = DEFAULT_POS +  550   # 950
+    SERVO2_UP = DEFAULT_POS - 560     # 2050
+    SERVO2_DOWN = DEFAULT_POS +  560   # 950
 
     POLL_INTERVAL = 0.05  # 20 Hz
     RESET_DOWN_DURATION = 3.0
@@ -98,7 +98,7 @@ class ServoController:
                     self._move2(pi, self.SERVO2_DOWN)
                     
                     time.sleep(self.RESET_DOWN_DURATION)
-                    
+
                     print("[Servo] RESET: returning to DEFAULT")
                     self._move(pi, self.DEFAULT_POS, self.DEFAULT_POS)
                     with self._lock:
