@@ -112,7 +112,7 @@ class ServoController:
                 if d != prev:
                     if d == "U":
                         self._move1(pi, self.SERVO1_UP)
-                        time.sleep(0.4)
+                        time.sleep(0.3)
                         self._move2(pi, self.SERVO2_UP)
                         print("[Servo] → UP (both)")
                     elif d == "D":
