@@ -30,8 +30,8 @@ class ServoController:
     SERVO1_DOWN = DEFAULT_POS + 1000  # 500
 
     # Servo 2 (GPIO 13) — ±550µs
-    SERVO2_UP = DEFAULT_POS - 560     # 2050
-    SERVO2_DOWN = DEFAULT_POS +  560   # 950
+    SERVO2_UP = DEFAULT_POS - 570     # 2050
+    SERVO2_DOWN = DEFAULT_POS +  570   # 950
 
     POLL_INTERVAL = 0.05  # 20 Hz
     RESET_DOWN_DURATION = 3
